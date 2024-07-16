@@ -10,9 +10,15 @@ from termcolor import cprint
 from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
-from src.models import BasicConvClassifier
+from src.models_finetuning import BasicConvClassifier
 from src.utils import set_seed
 
+#GPUが認識されるか確認
+print("GPU is available:", torch.cuda.is_available())
+
+#前処理の関数を定義
+# def ICA(X: torch.Tensor) -> torch.Tensor:
+    
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(args: DictConfig):
@@ -28,10 +34,13 @@ def run(args: DictConfig):
     loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
     
     train_set = ThingsMEGDataset("train", args.data_dir)
-    train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
     val_set = ThingsMEGDataset("val", args.data_dir)
-    val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
     test_set = ThingsMEGDataset("test", args.data_dir)
+    #データの前処理を行う
+    #ICA
+
+    train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
+    val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
@@ -42,6 +51,8 @@ def run(args: DictConfig):
     model = BasicConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
+
+    # model = 
 
     # ------------------
     #     Optimizer
@@ -61,7 +72,7 @@ def run(args: DictConfig):
         
         train_loss, train_acc, val_loss, val_acc = [], [], [], []
         
-        model.train()
+        model.train() ##nnモジュールを継承しているので，train()モジュールを使える
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to(args.device), y.to(args.device)
 
@@ -112,6 +123,6 @@ def run(args: DictConfig):
     np.save(os.path.join(logdir, "submission"), preds)
     cprint(f"Submission {preds.shape} saved at {logdir}", "cyan")
 
-
+#コマンドから実行した場合に実行
 if __name__ == "__main__":
     run()
